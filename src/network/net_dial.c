@@ -18,6 +18,26 @@ static DWORD dial_starttime;
 static char dial_server[MAX_QPATH];
 static cvar_t net_dial_profile = { "net_dial_profile", "ISP0", FCVAR_ARCHIVE };
 
+static DWORD NET_PrepareDialProfile( WCHAR *profile )
+{
+	RASENTRY entry;
+	DWORD size;
+	DWORD error;
+
+	memset(&entry, 0, sizeof(entry));
+	entry.dwSize = sizeof(entry);
+	size = sizeof(entry);
+	error = RasGetEntryProperties(NULL, profile, &entry, &size, NULL, NULL);
+	if (error)
+		return error;
+	if (entry.szLocalPhoneNumber[0])
+		return ERROR_SUCCESS;
+
+	entry.dwfOptions &= ~RASEO_UseCountryAndAreaCodes;
+	lstrcpy(entry.szLocalPhoneNumber, TEXT("111-1111"));
+	return RasSetEntryProperties(NULL, profile, &entry, size, NULL, 0);
+}
+
 void NET_DialHangup( void )
 {
 	DWORD error;
@@ -53,6 +73,8 @@ void NET_DialFrame( void )
 	char command[MAX_QPATH + 16];
 
 	if (!dial_connection)
+		return;
+	if (dial_connected && !dial_closing)
 		return;
 	now = GetTickCount();
 	if (!dial_connected && !dial_closing && (DWORD)(now - dial_starttime) > 180000)
@@ -163,6 +185,7 @@ static qboolean NET_DialStart( char *profile )
 	RASCONN existing;
 	DWORD error, size, count;
 	BOOL password;
+	BOOL save_params;
 
 	if (dial_connection)
 	{
@@ -198,8 +221,30 @@ static qboolean NET_DialStart( char *profile )
 		Con_Printf("Invalid dial-up profile\n");
 		return FALSE;
 	}
+	error = NET_PrepareDialProfile(params.szEntryName);
+	if (error)
+	{
+		Con_Printf("Dial profile error %lu\n", error);
+		return FALSE;
+	}
 	password = FALSE;
 	error = RasGetEntryDialParams(NULL, &params, &password);
+	if (!error)
+	{
+		save_params = FALSE;
+		if (!params.szUserName[0])
+		{
+			lstrcpy(params.szUserName, TEXT("dream"));
+			save_params = TRUE;
+		}
+		if (!password || !params.szPassword[0])
+		{
+			lstrcpy(params.szPassword, TEXT("dreamcast"));
+			save_params = TRUE;
+		}
+		if (save_params)
+			error = RasSetEntryDialParams(NULL, &params, FALSE);
+	}
 
 	if (!error && g_hWnd)
 	{
@@ -249,7 +294,19 @@ qboolean NET_DialBeforeConnect( char *server )
 		return FALSE;
 	}
 	if (dial_connected && !dial_closing)
-		return TRUE;
+	{
+		memset(&connection, 0, sizeof(connection));
+		connection.dwSize = sizeof(connection);
+		size = sizeof(connection);
+		count = 0;
+		error = RasEnumConnections(&connection, &size, &count);
+		if (error || count)
+			return TRUE;
+
+		dial_connection = NULL;
+		dial_connected = FALSE;
+		NET_Config(FALSE);
+	}
 	if (dial_connection)
 	{
 		if (!dial_closing)
