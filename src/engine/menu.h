@@ -721,6 +721,9 @@ public:
 	int			m_rightValue;
 	int			m_reserved24;
 	int			m_reserved28;
+#if HLDC_DUALSTICK
+	qboolean	m_hasSecondStick;
+#endif
 };
 
 extern CMenu*	gpActiveMenu;

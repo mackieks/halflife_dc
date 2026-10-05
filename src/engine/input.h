@@ -19,6 +19,11 @@ void IN_Accumulate( void );
 int IN_ControllerPresent( void );
 // FALSE while the pad is unplugged
 
+#if HLDC_DUALSTICK
+qboolean IN_HasSecondStick( void );
+// TRUE when both second-stick axes are advertised by the active controller
+#endif
+
 DLL_EXPORT void IN_ClearStates( void );
 // restores all button and position states to defaults
 
