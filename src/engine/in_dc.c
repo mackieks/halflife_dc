@@ -1562,6 +1562,62 @@ qboolean IN_HasSecondStick( void )
 		&& pJoystickDevice->buttonUsage[JOY_AN5] != JOY_USAGE_NONE
 		&& pJoystickDevice->buttonUsage[JOY_AN6] != JOY_USAGE_NONE;
 }
+
+
+/*
+===========
+IN_PresetOverlay
+
+Use the optional layout only when the pad reports both axes and the script
+is installed in the current game. The original preset is always available.
+===========
+*/
+char *IN_PresetOverlay( int preset )
+{
+	char	*name;
+	FILE	*file;
+	int		length;
+
+	if (!IN_HasSecondStick() || preset < 'A' || preset > 'C')
+		return NULL;
+
+	if (preset == 'A')
+		name = "dual_a.cfg";
+	else
+		name = "dual_bc.cfg";
+	length = COM_FOpenFile(name, &file);
+	if (!file)
+		return NULL;
+	Sys_CloseHandle(file);
+	return length > 0 ? name : NULL;
+}
+
+
+/*
+===========
+IN_ExecPreset
+
+Keep the scripts together so an inserted exec cannot run the overlay before
+the original preset's unbindall. Saved configuration can still follow both.
+===========
+*/
+void IN_ExecPreset( int preset, qboolean insert )
+{
+	char	commands[80];
+	char	*overlay;
+
+	if (preset < 'A' || preset > 'C')
+		return;
+
+	sprintf(commands, "exec preset_%c.cfg\n", preset + 'a' - 'A');
+	overlay = IN_PresetOverlay(preset);
+	if (overlay)
+		sprintf(commands + strlen(commands), "exec %s\n", overlay);
+	if (insert)
+		Cbuf_InsertText(commands);
+	else
+		Cbuf_AddText(commands);
+}
 #endif
 
 

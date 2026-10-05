@@ -22,6 +22,12 @@ int IN_ControllerPresent( void );
 #if HLDC_DUALSTICK
 qboolean IN_HasSecondStick( void );
 // TRUE when both second-stick axes are advertised by the active controller
+
+char *IN_PresetOverlay( int preset );
+// optional script for this controller and preset, or NULL
+
+void IN_ExecPreset( int preset, qboolean insert );
+// queue the original preset followed by its optional overlay
 #endif
 
 DLL_EXPORT void IN_ClearStates( void );

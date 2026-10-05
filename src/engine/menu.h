@@ -688,6 +688,12 @@ public:
 	char**		m_ppAliases;
 	int			m_nAliases;
 	int			m_iAlias;
+#if HLDC_DUALSTICK
+	void LoadAliases( void );
+	qboolean	m_hasSecondStick;
+	char		*m_pszOverlay;
+	char		m_szGameDir[MAX_OSPATH];
+#endif
 };
 
 // The custom controls page: it takes the keyboard while it waits for the
